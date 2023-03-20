@@ -8,13 +8,31 @@ class HashCompare:
     def __init__(self,args):
         self.args = args
 
+    def app_type(self,hash,alg):
+        ## select DISTINCT sha256, application_type FROM FILE join PKG on file.package_id = pkg.package_id limit 10;
+        query = 'select distinct application_type from file join pkg on file.package_id = pkg.package_id where {} = ?'.format(alg)
+        con = sqlite3.connect(self.args.database)
+        cur = con.cursor()
+        res = cur.execute(query,[hash])
+        query_output = res.fetchall()
+
+        output  = []
+        for i in query_output:
+            output.append(i[0])
+        
+        return output
+    
     ## if the option to find the known hashes then return the result, if the hash is not in the database exit
     def known_hashes(self,hash_compare_result):
         
         if hash_compare_result == None:
             exit
         else:
-            print(hash_compare_result)
+            if self.args.application_type == True:
+                apps = self.app_type(hash_compare_result,self.args.algorithm)
+                print(hash_compare_result,apps)
+            else:
+                print(hash_compare_result)
     
     ## if the option to find unknown hashes that are not in the database then return the hash that is being looked up
     def unknown_hashes(self,hash_compare_result,hash_value):
@@ -22,6 +40,10 @@ class HashCompare:
            print(hash_value)
         else:
             exit
+
+
+
+
 
     ## lookup the hashes in the database  
     def hash_compare(self, hash):
@@ -68,6 +90,8 @@ class HashCompare:
             hash_compare_result = sha256_hash_compare(self,hash)
 
         return hash_compare_result
+    
+    ## select DISTINCT sha256, application_type FROM FILE join PKG on file.package_id = pkg.package_id limit 10;
 
 
     def handle(self):
@@ -89,13 +113,14 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent('''Example:
             nsrlquery.py -a sha256 -d /nsrl/rdsv3.db 000000ADA6DDCA899E68D00512489768A1A330CBB02716CEC3BD73FE36B28DE7
-            nsrlquery.py -m /nsrl/databases/
+            nsrlquery.py -u -a sha256 -d /nsrl.rdsv3.db 000000ADA6DDCA899E68D00512489768A1A330CBB02716CEC3BD73FE36B28DE7
         ''')
     )
     parser.add_argument('-a','--algorithm',type=str,help='sha256, md5, sha1',default='md5')
     parser.add_argument('-d','--database',type=str,help='directory to the sqlite3 database')
     parser.add_argument('-k','--known',action='store_true',help='Known hashes default')
     parser.add_argument('-u','--unknown',action='store_true',help='Unknown hashes')
+    parser.add_argument('-t','--application_type',action='store_true',help='returns application type; eg: Security, Operating System')
     parser.add_argument('hash',type=str)
     args = parser.parse_args()
 
